@@ -1,20 +1,53 @@
-import React, { useState } from 'react';
+// App.js
+import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Alert, Button } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-// Import the custom component if you plan to use it
-import CustomTextInput from './Component/CustomTextInput'; // Ensure the path is correct
+import CustomTextInput from './Component/CustomTextInput';
+import { PhoneNumberProvider, usePhoneNumber } from './PhoneNumberContext';
 
 // Home Screen Component
 function HomeScreen({ navigation }) {
+  const { phoneNumber, logout } = usePhoneNumber(); // Lấy phoneNumber và hàm logout từ context
+
+  // Hàm xử lý khi nhấn nút Logout
+  const handleLogout = () => {
+    Alert.alert(
+      'Đăng Xuất',
+      'Bạn có chắc chắn muốn đăng xuất?',
+      [
+        {
+          text: 'Hủy',
+          style: 'cancel',
+        },
+        {
+          text: 'Đăng Xuất',
+          onPress: () => {
+            logout(); // Xóa số điện thoại khỏi context
+            navigation.navigate('PhoneNumberInput'); // Điều hướng về màn hình nhập số điện thoại
+          },
+          style: 'destructive',
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Home Screen</Text>
+      <Text style={styles.phoneText}>Đăng nhập với số: {phoneNumber}</Text>
       <TouchableOpacity 
         style={styles.button}
         onPress={() => navigation.navigate('Details')}
       >
         <Text style={styles.buttonText}>Go to Details</Text>
+      </TouchableOpacity>
+      <TouchableOpacity 
+        style={[styles.button, styles.logoutButton]}
+        onPress={handleLogout}
+      >
+        <Text style={styles.buttonText}>Logout</Text>
       </TouchableOpacity>
     </View>
   );
@@ -22,10 +55,11 @@ function HomeScreen({ navigation }) {
 
 // Phone Number Input Component
 const PhoneNumberInput = ({ navigation }) => {
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
+  const { setPhoneNumber } = usePhoneNumber(); // Sử dụng setPhoneNumber từ context
+  const [phoneInput, setPhoneInput] = React.useState('');
+  const [errorMessage, setErrorMessage] = React.useState('');
 
-  // Function to format phone number
+  // Hàm định dạng số điện thoại
   const formatPhoneNumber = (number) => {
     const cleaned = number.replace(/\D/g, '');
     let formattedNumber = '';
@@ -55,49 +89,49 @@ const PhoneNumberInput = ({ navigation }) => {
     return formatted;
   };
 
-  // Function to validate phone number
+  // Hàm kiểm tra định dạng số điện thoại
   const validatePhoneNumber = (number) => {
     const cleaned = number.replace(/\D/g, '');
     return cleaned.length === 10 || cleaned.length === 11;
   };
 
-  // Handle Continue button press
+  // Xử lý khi nhấn nút Continue
   const handlePress = () => {
-    if (!validatePhoneNumber(phoneNumber)) {
-      Alert.alert('Invalid Phone Number', 'Please enter a valid phone number format.');
+    if (!validatePhoneNumber(phoneInput)) {
+      Alert.alert('Số điện thoại không hợp lệ', 'Vui lòng nhập đúng định dạng số điện thoại.');
       return;
     }
-    console.log('Phone Number:', phoneNumber);
-    navigation.navigate('Home'); // Navigate to Home screen
+    setPhoneNumber(phoneInput); // Lưu số điện thoại vào context
+    navigation.navigate('Home'); // Điều hướng đến màn hình Home
   };
 
-  // Handle text change
+  // Xử lý khi thay đổi văn bản
   const handleChangeText = (text) => {
     const cleaned = text.replace(/\s/g, '');
     const nonNumeric = /[^\d+]/.test(cleaned);
     if (nonNumeric) {
-      setErrorMessage('Please enter only numbers');
+      setErrorMessage('Vui lòng chỉ nhập số');
     } else {
       setErrorMessage('');
     }
 
     const formattedText = formatPhoneNumber(cleaned);
-    setPhoneNumber(formattedText);
+    setPhoneInput(formattedText);
   };
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior="padding">
       <Text style={styles.header}>Login</Text>
       <View style={styles.shadowLine} />
-      <Text style={styles.subHeader}>Enter Phone Number</Text>
+      <Text style={styles.subHeader}>Nhập Số Điện Thoại</Text>
       <Text style={styles.description}>
-        Use your phone number to log in or register an account at OneHousing Pro
+        Sử dụng số điện thoại để đăng nhập hoặc đăng ký tài khoản tại OneHousing Pro
       </Text>
 
       <CustomTextInput
-        placeholder="Enter your phone number"
+        placeholder="Nhập số điện thoại của bạn"
         keyboardType="phone-pad"
-        value={phoneNumber}
+        value={phoneInput}
         onChangeText={handleChangeText}
         maxLength={15}
       />
@@ -107,10 +141,10 @@ const PhoneNumberInput = ({ navigation }) => {
       <TouchableOpacity
         style={[
           styles.button,
-          validatePhoneNumber(phoneNumber) ? styles.activeButton : styles.disabledButton,
+          validatePhoneNumber(phoneInput) ? styles.activeButton : styles.disabledButton,
         ]}
         onPress={handlePress}
-        disabled={!validatePhoneNumber(phoneNumber)}
+        disabled={!validatePhoneNumber(phoneInput)}
       >
         <Text style={styles.buttonText}>Continue</Text>
       </TouchableOpacity>
@@ -131,69 +165,74 @@ function DetailsScreen({ navigation }) {
   );
 }
 
-// Create the stack navigator
+// Tạo stack navigator
 const Stack = createNativeStackNavigator();
 
 // Main App Component
 function App() {
   return (
-    <NavigationContainer>
-      <Stack.Navigator initialRouteName="PhoneNumberInput">
-        <Stack.Screen 
-          name="PhoneNumberInput" 
-          component={PhoneNumberInput} 
-          options={{ title: 'Enter Phone Number' }}
-        />
-        <Stack.Screen 
-          name="Home" 
-          component={HomeScreen} 
-          options={{ title: 'Welcome Home' }}
-        />
-        <Stack.Screen 
-          name="Details" 
-          component={DetailsScreen} 
-          options={{ title: 'Details' }}
-        />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <PhoneNumberProvider>
+      <NavigationContainer>
+        <Stack.Navigator initialRouteName="PhoneNumberInput">
+          <Stack.Screen 
+            name="PhoneNumberInput" 
+            component={PhoneNumberInput} 
+            options={{ title: 'Nhập Số Điện Thoại' }}
+          />
+          <Stack.Screen 
+            name="Home" 
+            component={HomeScreen} 
+            options={{ title: 'Chào Mừng' }}
+          />
+          <Stack.Screen 
+            name="Details" 
+            component={DetailsScreen} 
+            options={{ title: 'Chi Tiết' }}
+          />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </PhoneNumberProvider>
   );
 }
 
-// Stylesheet for consistent styling
+// Stylesheet cho ứng dụng
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20
-  },
-  title: {
-    fontSize: 24,
-    marginBottom: 20
-  },
-  button: {
-    backgroundColor: '#2196F3',
-    paddingVertical: 12,
-    paddingHorizontal: 25,
-    borderRadius: 5,
-    marginTop: 20
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16
+    padding: 20,
+    paddingTop: 50,
+    backgroundColor: '#fff',
   },
   header: {
     fontSize: 28,
     marginBottom: 10,
+    fontWeight: 'bold',
   },
   subHeader: {
     fontSize: 20,
     marginBottom: 5,
+    color: '#333',
   },
   description: {
     textAlign: 'center',
     marginBottom: 20,
     color: '#555',
+  },
+  button: {
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+    borderRadius: 5,
+    marginTop: 20,
+    width: '80%',
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+  },
+  logoutButton: {
+    backgroundColor: '#f44336', // Màu đỏ cho nút Logout
   },
   errorText: {
     color: 'red',
@@ -210,6 +249,16 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     backgroundColor: '#B0BEC5',
+  },
+  title: {
+    fontSize: 24,
+    marginBottom: 20,
+    fontWeight: '600',
+  },
+  phoneText: {
+    fontSize: 18,
+    marginVertical: 10,
+    color: '#333',
   },
 });
 

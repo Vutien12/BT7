@@ -1,3 +1,4 @@
+// /Component/CustomTextInput.js
 import React from 'react';
 import { TextInput, StyleSheet } from 'react-native';
 
@@ -16,12 +17,13 @@ const CustomTextInput = ({ value, onChangeText, placeholder, keyboardType }) => 
 
 const styles = StyleSheet.create({
   input: {
-    height: 40,
+    height: 50,
     borderBottomWidth: 1,
     borderBottomColor: '#ccc',
     marginBottom: 20,
-    fontSize: 15,
+    fontSize: 18,
     paddingLeft: 10,
+    width: '100%',
   },
 });
 
